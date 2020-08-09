@@ -1,8 +1,10 @@
 import logging
 import pathlib
 import time
+import os
 
 from mopidy import commands, exceptions
+from mopidy.models import Track
 from mopidy.audio import scan, tags
 
 from mopidy_local import mtimes, storage, translator
@@ -242,7 +244,16 @@ class ScanCommand(commands.Command):
                     library.add(track, result.tags, result.duration)
                     logger.debug(f"Added {track.uri}")
             except exceptions.ScannerError as error:
-                logger.warning(f"Failed scanning {file_uri}: {error}")
+                local_uri = translator.path_to_local_track_uri(
+                    absolute_path, media_dir
+                )
+                mtime = file_mtimes.get(absolute_path)
+                track = Track(name=os.path.basename(absolute_path)).replace(
+                    uri=local_uri, last_modified=mtime
+                )
+                library.add(track)
+                logger.debug(f"Added {track.uri} (without tags)")
+                # logger.warning(f"Failed scanning {file_uri}: {error}")
 
             if progress.increment():
                 progress.log()
